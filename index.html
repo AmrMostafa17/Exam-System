@@ -2,43 +2,53 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Exam System Pro with History & Score</title>
-<!-- <link rel="stylesheet" href="css/bootstrap.min.css"> -->
+<title>Exam System</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
-.timer { font-size:20px; font-weight:bold; color:red; }
-.section-title { background:#f1f1f1; padding:8px; border-radius:6px; margin-top:20px;}
+body { background-color: #f8f9fa; }
+.card { border-radius: 12px; }
+.timer { font-size: 20px; font-weight: bold; color: #dc3545; }
+.section-title { background:#e9ecef; padding:10px; border-radius:8px; margin-top:20px; font-weight:bold; }
+h2,h3,h4 { font-weight:600; }
+.btn { border-radius: 8px; }
+textarea { min-height:80px; }
+input, textarea { box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
 </style>
 </head>
-<body class="bg-light">
+<body>
 
-<div class="container mt-4">
+<div class="container mt-5">
 
-<!-- ================= ADMIN PAGE ================= -->
-<div id="adminPage">
+<!-- START PAGE -->
+<div id="startPage" class="text-center">
+    <h2 class="mb-4">Welcome to Exam System</h2>
+    <button class="btn btn-primary btn-lg mb-3 w-50" onclick="loadExam()">Start Exam</button>
+    <br>
+    <button class="btn btn-secondary btn-lg w-50" onclick="checkAdmin()">Admin Login</button>
+</div>
+
+<!-- ADMIN PAGE -->
+<div id="adminPage" style="display:none;">
 <div class="card p-4 shadow">
-<h3>Create Exam</h3>
+<h3>Admin: Manage Exam</h3>
+<hr>
 <div id="errorBox"></div>
-
-<div class="row">
-<div class="col-md-4"><input type="number" id="tfCount" class="form-control mb-2" placeholder="True/False Count"></div>
-<div class="col-md-4"><input type="number" id="fillCount" class="form-control mb-2" placeholder="Fill Count"></div>
-<div class="col-md-4"><input type="number" id="essayCount" class="form-control mb-2" placeholder="Essay Count"></div>
+<div class="row mb-3">
+    <div class="col-md-4"><input type="number" id="tfCount" class="form-control" placeholder="True/False Count" value="10"></div>
+    <div class="col-md-4"><input type="number" id="fillCount" class="form-control" placeholder="Fill Count" value="15"></div>
+    <div class="col-md-4"><input type="number" id="essayCount" class="form-control" placeholder="Essay Count" value="5"></div>
 </div>
-
-<button class="btn btn-dark w-100 mt-2" onclick="generateFields()">Generate Fields</button>
-<hr>
-<div id="questionsArea"></div>
-<button class="btn btn-success w-100 mt-3" onclick="startExam()">Start Exam</button>
-<hr>
-<button class="btn btn-info w-100 mt-2" onclick="showHistory()">Show Exam History</button>
+<button class="btn btn-dark w-100 mb-2" onclick="generateFields()">Generate Questions</button>
+<button class="btn btn-success w-100 mb-2" onclick="saveQuestions()">Save Questions</button>
+<button class="btn btn-info w-100 mb-2" onclick="showHistory()">Show Exam History</button>
+<button class="btn btn-warning w-100" onclick="backToHome()">Back to Home</button>
 </div>
 </div>
 
-<!-- ================= STUDENT PAGE ================= -->
+<!-- STUDENT PAGE -->
 <div id="studentPage" style="display:none;">
 <div class="card p-4 shadow">
-<h4>Student Name</h4>
+<h4 class="mb-3">Student Name</h4>
 <input type="text" id="studentName" class="form-control mb-3" placeholder="Enter your name">
 <div class="timer mb-3">Time Left: <span id="time">20:00</span></div>
 <form id="examForm"></form>
@@ -47,13 +57,13 @@
 </div>
 </div>
 
-<!-- ================= HISTORY PAGE ================= -->
+<!-- HISTORY PAGE -->
 <div id="historyPage" style="display:none;">
 <div class="card p-4 shadow">
-<h3>Exam History</h3>
+<h3 class="mb-3">Exam History</h3>
 <button class="btn btn-secondary mb-3" onclick="backToAdmin()">Back</button>
-<table class="table table-bordered">
-<thead>
+<table class="table table-bordered table-hover">
+<thead class="table-dark">
 <tr>
 <th>#</th>
 <th>Student Name</th>
@@ -66,81 +76,111 @@
 </div>
 </div>
 
-</div>
-
 <script>
 let examData = [];
 let timerInterval;
-let duration = 20*60;
+let duration = 20*60; // 20 دقيقة
 
-// ---------------- GENERATE QUESTIONS ----------------
-function generateFields() {
-    let tf = document.getElementById("tfCount").value;
-    let fill = document.getElementById("fillCount").value;
-    let essay = document.getElementById("essayCount").value;
-    let errorBox = document.getElementById("errorBox");
-    errorBox.innerHTML = "";
-
-    if ((tf=="" || tf==0) && (fill=="" || fill==0) && (essay=="" || essay==0)) {
-        errorBox.innerHTML = `<div class="alert alert-danger">You cannot submit empty question counts!</div>`;
-        return;
-    }
-
-    tf = parseInt(tf)||0;
-    fill = parseInt(fill)||0;
-    essay = parseInt(essay)||0;
-
-    examData=[];
-    let area=document.getElementById("questionsArea");
-    area.innerHTML="";
-
-    let count=0;
-    for(let i=0;i<tf;i++){
-        count++;
-        area.innerHTML+=`
-<div class="mb-3">
-<label>TF Question ${count}</label>
-<input type="text" class="form-control mb-1" id="q${count}">
-<select class="form-select" id="a${count}">
-<option value="True">True</option>
-<option value="False">False</option>
-</select>
-</div>`;
-        examData.push({type:"tf"});
-    }
-
-    for(let i=0;i<fill;i++){
-        count++;
-        area.innerHTML+=`
-<div class="mb-3">
-<label>Fill Question ${count}</label>
-<input type="text" class="form-control mb-1" id="q${count}">
-<input type="text" class="form-control" placeholder="Correct Answer" id="a${count}">
-</div>`;
-        examData.push({type:"fill"});
-    }
-
-    for(let i=0;i<essay;i++){
-        count++;
-        area.innerHTML+=`
-<div class="mb-3">
-<label>Essay Question ${count}</label>
-<input type="text" class="form-control" id="q${count}">
-</div>`;
-        examData.push({type:"essay"});
+// ---------------- ADMIN LOGIN ----------------
+function checkAdmin(){
+    let phone = prompt("Enter admin phone number:");
+    if(phone === "01123228587"){
+        enableEditing();
+    } else {
+        alert("Wrong phone number!");
     }
 }
 
-// ---------------- START EXAM ----------------
-function startExam(){
-    examData.forEach((q,index)=>{
-        q.text=document.getElementById(`q${index + 1}`).value;
-        if(q.type!=="essay"){q.answer=document.getElementById(`a${index + 1}`).value;}
-    });
+function enableEditing(){
+    startPage.style.display = "none";
+    adminPage.style.display = "block";
+    studentPage.style.display = "none";
 
-    adminPage.style.display="none";
+    let saved = JSON.parse(localStorage.getItem("examData"));
+    if(saved){ examData = saved; }
+}
+
+// ---------------- QUESTION BANK ----------------
+const questionBank = {
+    tf: [
+        { question: "Software testing ensures that a product is free of bugs.", answer: "True" },
+        { question: "Testing is only about running the software and looking for bugs.", answer: "False" },
+        { question: "Verification checks if the software meets users' needs.", answer: "True" },
+        { question: "Debugging is the process of finding bugs, while testing is fixing them.", answer: "False" },
+        { question: "QA focuses on preventing bugs before they occur.", answer: "True" }
+    ],
+    fill: [
+        { question: "The process of ensuring software is free of bugs is called ________.", answer: "Testing" },
+        { question: "Checking if software meets requirements is ________.", answer: "Verification" },
+        { question: "Testing individual units of code is ________.", answer: "Unit Testing" },
+        { question: "Most bugs are found in a few modules is called ________.", answer: "Pareto Principle" },
+        { question: "Repeating the same tests and finding fewer bugs is ________.", answer: "Pesticide Paradox" }
+    ],
+    essay: [
+        { question: "Explain the main goal of Agile methodology." },
+        { question: "Describe verification vs validation in software testing." },
+        { question: "Explain Test-Driven Development (TDD) with example." },
+        { question: "Name two Agile frameworks and differences." },
+        { question: "Purpose of Daily Scrum and Sprint Retrospective?" }
+    ]
+};
+
+// ---------------- PICK RANDOM WITH REPEAT ----------------
+function pickRandomWithRepeat(arr, n){
+    let result=[];
+    while(result.length < n){
+        let copy = [...arr];
+        while(copy.length>0 && result.length < n){
+            let idx=Math.floor(Math.random()*copy.length);
+            result.push(copy[idx]);
+            copy.splice(idx,1);
+        }
+    }
+    return result.slice(0,n);
+}
+
+// ---------------- GENERATE QUESTIONS ----------------
+function generateFields() {
+    let tf = parseInt(document.getElementById('tfCount').value)||0;
+    let fill = parseInt(document.getElementById('fillCount').value)||0;
+    let essay = parseInt(document.getElementById('essayCount').value)||0;
+
+    if(tf+fill+essay===0){
+        document.getElementById('errorBox').innerHTML=`<div class="alert alert-danger">Enter number of questions!</div>`;
+        return;
+    }
+
+    examData=[];
+    examData.push(...pickRandomWithRepeat(questionBank.tf, tf).map(q=>({...q, type:'tf'})));
+    examData.push(...pickRandomWithRepeat(questionBank.fill, fill).map(q=>({...q, type:'fill'})));
+    examData.push(...pickRandomWithRepeat(questionBank.essay, essay).map(q=>({...q, type:'essay'})));
+
+    alert("Questions generated!");
+}
+
+// ---------------- SAVE QUESTIONS ----------------
+function saveQuestions(){
+    localStorage.setItem("examData", JSON.stringify(examData));
+    alert("Questions saved!");
+}
+
+// ---------------- DEFAULT QUESTIONS ----------------
+function loadDefaultQuestions(){
+    examData = [];
+    examData.push(...pickRandomWithRepeat(questionBank.tf,10).map(q=>({...q,type:'tf'})));
+    examData.push(...pickRandomWithRepeat(questionBank.fill,15).map(q=>({...q,type:'fill'})));
+    examData.push(...pickRandomWithRepeat(questionBank.essay,5).map(q=>({...q,type:'essay'})));
+    localStorage.setItem("examData", JSON.stringify(examData));
+}
+
+// ---------------- LOAD EXAM ----------------
+function loadExam(){
+    let saved = JSON.parse(localStorage.getItem("examData"));
+    if(saved && saved.length>0){ examData = saved; }
+    else { loadDefaultQuestions(); }
+
+    startPage.style.display="none";
     studentPage.style.display="block";
-
     renderExam();
     startTimer();
 }
@@ -156,7 +196,7 @@ function renderExam(){
         if(q.type==="fill" && !fillSection){form.innerHTML+=`<div class="section-title">Fill Section</div>`; fillSection=true;}
         if(q.type==="essay" && !essaySection){form.innerHTML+=`<div class="section-title">Essay Section</div>`; essaySection=true;}
 
-        let html=`<div class="mb-3"><label>${index+1}) ${q.text}</label>`;
+        let html=`<div class="mb-3"><label>${index+1}) ${q.question}</label>`;
         if(q.type==="tf"){html+=`<div><input type="radio" name="q${index}" value="True"> True</div><div><input type="radio" name="q${index}" value="False"> False</div>`;}
         if(q.type==="fill"){html+=`<input type="text" class="form-control" name="q${index}">`;}
         if(q.type==="essay"){html+=`<textarea class="form-control" name="q${index}"></textarea>`;}
@@ -183,20 +223,17 @@ function submitExam(){
     let name=document.getElementById("studentName").value;
     if(!name){ alert("Enter your name"); return;}
 
-    // حساب النتيجة لكل True/False و Fill
-    let score=0;
-    let total=0;
+    let score=0,total=0;
     examData.forEach((q,index)=>{
         if(q.type!=="essay"){
             total++;
             let userAnswer=document.querySelector(`[name="q${index}"]:checked`) || document.querySelector(`[name="q${index}"]`);
-            if(userAnswer && userAnswer.value && userAnswer.value.toLowerCase()===q.answer.toLowerCase()){
+            if(userAnswer && userAnswer.value && userAnswer.value.toLowerCase()===q.answer?.toLowerCase()){
                 score++;
             }
         }
     });
 
-    // حفظ في LocalStorage
     let history = JSON.parse(localStorage.getItem("examHistory"))||[];
     history.push({name:name, score:score+'/'+total, timestamp:new Date().toLocaleString()});
     localStorage.setItem("examHistory", JSON.stringify(history));
@@ -211,6 +248,7 @@ function submitExam(){
 
 // ---------------- SHOW HISTORY ----------------
 function showHistory(){
+    startPage.style.display="none";
     adminPage.style.display="none";
     historyPage.style.display="block";
     let table = document.getElementById("historyTable");
@@ -221,11 +259,8 @@ function showHistory(){
     });
 }
 
-function backToAdmin(){
-    historyPage.style.display="none";
-    adminPage.style.display="block";
-}
+function backToAdmin(){ historyPage.style.display="none"; adminPage.style.display="block"; }
+function backToHome(){ adminPage.style.display="none"; startPage.style.display="block"; studentPage.style.display="none"; historyPage.style.display="none"; }
 </script>
-<!-- <script src="js/bootstrap.bundle.min.js"></script> -->
 </body>
 </html>
